@@ -12,9 +12,10 @@ import AlamofireImage
 class FeedViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
     @IBOutlet weak var tableView: UITableView!
+    
+    var refreshControl = UIRefreshControl()
     var posts = [PFObject]()
-    
-    
+    var lim: Int!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -23,15 +24,36 @@ class FeedViewController: UIViewController, UITableViewDelegate, UITableViewData
         tableView.dataSource = self
       
         // Do any additional setup after loading the view.
+    
+        refreshControl.addTarget(self, action: #selector(viewDidAppear), for: .valueChanged)
+        tableView.refreshControl = refreshControl
     }
     
     override func viewDidAppear(_ animated: Bool) {
+        
+        lim = 5
         
         super.viewDidAppear(animated)
         
         let query = PFQuery(className:"posts")
         query.includeKey("author")
-        query.limit = 20
+        query.limit = lim
+        
+        query.findObjectsInBackground{(posts, error) in
+            if posts != nil{
+                self.posts = posts!
+                self.tableView.reloadData()
+                self.refreshControl.endRefreshing()
+            }
+        }
+    }
+    
+    func loadMorePost(){
+        
+        lim = lim + 5
+        let query = PFQuery(className:"posts")
+        query.includeKey("author")
+        query.limit = lim
         
         query.findObjectsInBackground{(posts, error) in
             if posts != nil{
@@ -40,6 +62,13 @@ class FeedViewController: UIViewController, UITableViewDelegate, UITableViewData
             }
         }
     }
+    
+    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        if indexPath.row + 1 == posts.count{
+            loadMorePost()
+        }
+    }
+    
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return posts.count
